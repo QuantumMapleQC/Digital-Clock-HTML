@@ -18,7 +18,6 @@ mainly used for my useless devices like my Samsung Galaxy Tab A (2017) SM-380 wh
   [x] Google Chrome ( Older versions may not work)
   
   [ ] Firefox
-
   Other browsers are Unknown for now.
 
   # Issues / Errors that can happen 
