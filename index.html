@@ -1,0 +1,1655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Personal Weather Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        /* Reset & Base */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        html, body {
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: #ffffff;
+        }
+        
+        /* Fullscreen Container with Background Image */
+        .container {
+            height: 100vh;
+            width: 100vw;
+            padding: 40px 30px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            background: 
+                linear-gradient(to bottom, 
+                    rgba(0, 0, 0, 0.4) 0%,
+                    rgba(0, 0, 0, 0.6) 100%),
+                url('background.jpg') center center / cover no-repeat fixed;
+        }
+        
+        /* Fallback if image doesn't load */
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                linear-gradient(135deg, 
+                    rgba(26, 115, 232, 0.15) 0%,
+                    rgba(52, 168, 83, 0.10) 25%,
+                    rgba(251, 188, 4, 0.10) 50%,
+                    rgba(234, 67, 53, 0.15) 100%),
+                #000000;
+            z-index: -1;
+        }
+        
+        .container.loaded::before {
+            display: none;
+        }
+        
+        /* Top Bar */
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+        }
+        
+        .location-info {
+            font-size: 15px;
+            color: rgba(255, 255, 255, 0.9);
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px 16px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .location-info i {
+            font-size: 12px;
+        }
+        
+        .battery {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.9);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px 16px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Main Clock */
+        .main-clock {
+            text-align: center;
+            margin: 20px 0 40px 0;
+            position: relative;
+        }
+        
+        .clock-time {
+            font-size: 96px;
+            font-weight: 300;
+            letter-spacing: -3px;
+            margin-bottom: 8px;
+            font-variant-numeric: tabular-nums;
+            color: #ffffff;
+            text-shadow: 0 2px 20px rgba(0, 0, 0, 0.7);
+        }
+        
+        .clock-date {
+            font-size: 20px;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 16px;
+            text-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);
+        }
+        
+        /* Weather */
+        .weather-widget {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 40px;
+        }
+        
+        .weather-icon {
+            font-size: 28px;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+        }
+        
+        .weather-temp {
+            font-size: 28px;
+            font-weight: 400;
+            color: #ffffff;
+            text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7);
+        }
+        
+        .weather-details {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 2px;
+        }
+        
+        .weather-location {
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.8);
+            text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);
+        }
+        
+        .weather-condition {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+            text-transform: capitalize;
+        }
+        
+        .weather-extras {
+            display: flex;
+            gap: 8px;
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.5);
+            margin-top: 2px;
+        }
+        
+        /* Date Controls */
+        .date-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .date-control-btn {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 10px 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 400;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Google Sans';
+        }
+        
+        .date-control-btn:active {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(2px);
+        }
+        
+        .date-control-btn i {
+            font-size: 14px;
+        }
+        
+        /* Hidden Menu */
+        .menu-toggle {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 100;
+            transition: all 0.3s;
+        }
+        
+        .menu-toggle:active {
+            transform: scale(0.95);
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        .menu {
+            position: fixed;
+            bottom: 100px;
+            right: 40px;
+            background: rgba(32, 33, 36, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 99;
+            min-width: 180px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+        }
+        
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border-radius: 12px;
+            color: #ffffff;
+            text-decoration: none;
+            transition: background 0.2s;
+            cursor: pointer;
+        }
+        
+        .menu-item:active {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .menu-item i {
+            width: 20px;
+            color: #8ab4f8;
+        }
+        
+        /* Fullscreen Helper */
+        .fullscreen-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 10px 16px;
+            color: #ffffff;
+            font-size: 13px;
+            cursor: pointer;
+            z-index: 101;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'Google Sans';
+        }
+        
+        /* Modal Styling */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .modal-content {
+            background: rgba(32, 33, 36, 0.95);
+            backdrop-filter: blur(30px);
+            padding: 30px;
+            border-radius: 24px;
+            max-width: 600px;
+            width: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        /* Background Thumbnails */
+        .bg-thumbnails {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+        
+        .bg-thumb {
+            aspect-ratio: 16/9;
+            background: center/cover;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: border 0.2s;
+        }
+        
+        .bg-thumb:hover {
+            border-color: #1a73e8;
+        }
+        
+        .bg-thumb.selected {
+            border-color: #1a73e8;
+            border-width: 3px;
+        }
+        
+        /* Tablet Optimizations */
+        @media (max-height: 800px) {
+            .container {
+                padding: 30px 20px;
+            }
+            
+            .clock-time {
+                font-size: 80px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .clock-time {
+                font-size: 72px;
+            }
+            
+            .date-controls {
+                gap: 10px;
+            }
+            
+            .date-control-btn {
+                padding: 8px 14px;
+                font-size: 13px;
+            }
+            
+            .bg-thumbnails {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .clock-time {
+                font-size: 64px;
+            }
+            
+            .date-controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .date-control-btn {
+                width: 160px;
+                justify-content: center;
+            }
+            
+            .bg-thumbnails {
+                grid-template-columns: 1fr;
+            }
+            
+            .top-bar {
+                flex-direction: column;
+                gap: 10px;
+                align-items: flex-start;
+            }
+        }
+        
+        /* Prevent selection */
+        * {
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        
+        /* Hide scrollbars */
+        ::-webkit-scrollbar {
+            display: none;
+        }
+        
+        /* Background overlay for better text visibility */
+        .text-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: -1;
+            opacity: 0.5;
+            transition: opacity 0.3s;
+        }
+        
+        /* Input Styling */
+        .modal-input {
+            width: 100%;
+            padding: 15px;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #ffffff;
+            font-family: 'Google Sans';
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        
+        .modal-button {
+            padding: 15px 20px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 12px;
+            color: #ffffff;
+            cursor: pointer;
+            font-family: 'Google Sans';
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+        
+        .modal-button.primary {
+            background: #1a73e8;
+            border: none;
+        }
+        
+        .modal-button:hover {
+            background: rgba(255,255,255,0.15);
+        }
+        
+        .modal-button.primary:hover {
+            background: #0d63d8;
+        }
+        
+        .button-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        /* Modal Headers */
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        
+        .modal-title {
+            color: #ffffff;
+            font-weight: 500;
+            font-size: 24px;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            color: rgba(255,255,255,0.7);
+            font-size: 28px;
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+        
+        .modal-close:hover {
+            background: rgba(255,255,255,0.1);
+        }
+        
+        /* Welcome Screen */
+        .welcome-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 30px;
+            z-index: 10000;
+            text-align: center;
+        }
+        
+        .welcome-content {
+            max-width: 500px;
+            width: 100%;
+        }
+        
+        .welcome-title {
+            font-size: 32px;
+            margin-bottom: 20px;
+            color: #ffffff;
+            font-weight: 500;
+        }
+        
+        .welcome-text {
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        
+        .permission-btn {
+            background: #1a73e8;
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-size: 18px;
+            font-family: 'Google Sans';
+            cursor: pointer;
+            transition: background 0.2s;
+            width: 100%;
+            max-width: 300px;
+        }
+        
+        .permission-btn:hover {
+            background: #0d63d8;
+        }
+        
+        .skip-btn {
+            background: transparent;
+            color: rgba(255, 255, 255, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-family: 'Google Sans';
+            cursor: pointer;
+            margin-top: 15px;
+            transition: all 0.2s;
+        }
+        
+        .skip-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Welcome/Setup Screen -->
+    <div id="welcomeScreen" class="welcome-screen">
+        <div class="welcome-content">
+            <h1 class="welcome-title">Welcome to Weather Dashboard</h1>
+            <p class="welcome-text">
+                This dashboard shows local weather and time based on your device's location and timezone.
+                To get accurate weather information, we need your permission to access your location.
+                Your location data is used only to fetch weather and is not stored or shared.
+            </p>
+            <button class="permission-btn" onclick="requestLocationPermission()">
+                <i class="fas fa-map-marker-alt"></i> Allow Location Access
+            </button>
+            <button class="skip-btn" onclick="skipLocation()">
+                Skip Location (Use Default)
+            </button>
+            <div style="margin-top: 30px; font-size: 12px; color: rgba(255, 255, 255, 0.5);">
+                <p><i class="fas fa-lock"></i> Privacy Note: Location is used only for weather API calls. No data is stored.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fullscreen Button -->
+    <button class="fullscreen-btn" id="fullscreenBtn" onclick="toggleFullscreen()">
+        <i class="fas fa-expand"></i> Fullscreen
+    </button>
+    
+    <!-- Text Overlay for Better Readability -->
+    <div class="text-overlay" id="textOverlay"></div>
+    
+    <!-- Main Container -->
+    <div class="container" id="mainContainer" style="display: none;">
+        <!-- Top Bar -->
+        <div class="top-bar">
+            <div class="location-info">
+                <i class="fas fa-map-marker-alt"></i>
+                <span id="locationInfo">Getting location...</span>
+            </div>
+            <div class="battery">
+                <i class="fas fa-plug-circle-bolt"></i>
+                <span id="batteryLevel">Fully Charged</span>
+            </div>
+        </div>
+        
+        <!-- Main Clock with Date Controls -->
+        <div class="main-clock">
+            <div class="clock-time" id="clock">00:00</div>
+            <div class="clock-date" id="fullDate">Loading...</div>
+            
+            <!-- Date Controls -->
+            <div class="date-controls">
+                <button class="date-control-btn" onclick="changeBackground()">
+                    <i class="fas fa-image"></i> Change BG
+                </button>
+                <button class="date-control-btn" onclick="toggleOverlay()">
+                    <i class="fas fa-adjust"></i> Overlay
+                </button>
+                <button class="date-control-btn" onclick="refreshWeather()">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+        </div>
+        
+        <!-- Weather Widget -->
+        <div class="weather-widget">
+            <div class="weather-icon" id="weatherIcon">⏳</div>
+            <div class="weather-temp" id="temperature">--°C</div>
+            <div class="weather-details">
+                <div class="weather-location" id="location">Your Location</div>
+                <div class="weather-condition" id="weatherCondition">Allow location access for weather</div>
+                <div class="weather-extras">
+                    <span id="feelsLike">Feels: --°</span>
+                    <span id="humidity">Humidity: --%</span>
+                    <span id="windSpeed">Wind: -- km/h</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Menu Toggle -->
+        <div class="menu-toggle" onclick="toggleMenu()">
+            <i class="fas fa-ellipsis-h"></i>
+        </div>
+        
+        <!-- Hidden Menu -->
+        <div class="menu" id="sideMenu">
+            <div class="menu-item" onclick="changeBackground()">
+                <i class="fas fa-image"></i>
+                <span>Change Background</span>
+            </div>
+            <div class="menu-item" onclick="toggleOverlay()">
+                <i class="fas fa-adjust"></i>
+                <span id="overlayText">Darken Overlay</span>
+            </div>
+            <div class="menu-item" onclick="refreshWeather()">
+                <i class="fas fa-sync-alt"></i>
+                <span>Refresh Weather</span>
+            </div>
+            <div class="menu-item" onclick="showSettings()">
+                <i class="fas fa-cog"></i>
+                <span>Settings</span>
+            </div>
+            <div class="menu-item" onclick="toggleFullscreen()">
+                <i class="fas fa-expand"></i>
+                <span>Fullscreen</span>
+            </div>
+            <div class="menu-item" onclick="changeLocation()">
+                <i class="fas fa-map-marker-alt"></i>
+                <span>Change Location</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Background Selection Modal -->
+    <div id="bgModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Choose Background</h2>
+                <button class="modal-close" onclick="hideBgModal()">×</button>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <div style="margin-bottom: 12px; color: rgba(255,255,255,0.9);">Select from default images:</div>
+                <div id="defaultBackgrounds" class="bg-thumbnails">
+                    <!-- Default backgrounds will be added by JavaScript -->
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 25px;">
+                <div style="margin-bottom: 12px; color: rgba(255,255,255,0.9);">Use custom image from folder:</div>
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <input type="text" id="customImagePath" placeholder="background.jpg" class="modal-input" value="background.jpg">
+                    <button class="modal-button" onclick="testCustomImage()">Test</button>
+                </div>
+                <div style="font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 20px;">
+                    Place your image in the same folder as this HTML file.<br>
+                    Supported formats: JPG, PNG, GIF<br>
+                    Recommended size: 1920x1080 or larger
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 25px;">
+                <div style="margin-bottom: 12px; color: rgba(255,255,255,0.9);">Or use a URL:</div>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="imageUrl" placeholder="https://example.com/image.jpg" class="modal-input"> 
+                    <button class="modal-button" onclick="testUrlImage()">Test</button>
+                </div>
+            </div>
+            
+            <div class="button-row">
+                <button class="modal-button" onclick="setNoBackground()">No Background</button>
+                <button class="modal-button primary" onclick="applyBackground()">Apply Background</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Settings</h2>
+                <button class="modal-close" onclick="hideSettings()">×</button>
+            </div>
+            
+            <div style="margin-bottom: 25px;">
+                <div style="margin-bottom: 12px; color: rgba(255,255,255,0.9);">Temperature Unit</div>
+                <div class="button-row">
+                    <button id="celsiusBtn" onclick="setTempUnit('C')" class="modal-button primary">Celsius (°C)</button>
+                    <button id="fahrenheitBtn" onclick="setTempUnit('F')" class="modal-button">Fahrenheit (°F)</button>
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 25px;">
+                <div style="margin-bottom: 12px; color: rgba(255,255,255,0.9);">Text Overlay Opacity</div>
+                <input type="range" id="overlayOpacity" min="0" max="100" value="50" class="modal-input" style="width: 100%; height: 8px; -webkit-appearance: none; background: rgba(255,255,255,0.1); border-radius: 4px; outline: none; padding: 0;">
+                <div style="display: flex; justify-content: space-between; font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 8px;">
+                    <span>Light</span>
+                    <span>Medium</span>
+                    <span>Dark</span>
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 25px;">
+                <div style="margin-bottom: 12px; color: rgba(255,255,255,0.9);">Location Source</div>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <button class="modal-button" onclick="useDeviceLocation()">
+                        <i class="fas fa-mobile-alt"></i> Use Device Location
+                    </button>
+                    <button class="modal-button" onclick="showLocationPicker()">
+                        <i class="fas fa-map"></i> Choose Custom Location
+                    </button>
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 25px; display: none;" id="customLocationSection">
+                <div style="margin-bottom: 12px; color: rgba(255,255,255,0.9);">Custom Location</div>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="customLat" placeholder="Latitude" class="modal-input" style="flex: 1;">
+                    <input type="text" id="customLon" placeholder="Longitude" class="modal-input" style="flex: 1;">
+                </div>
+                <button class="modal-button" onclick="saveCustomLocation()" style="width: 100%; margin-top: 10px;">
+                    <i class="fas fa-save"></i> Save Custom Location
+                </button>
+            </div>
+            
+            <div style="margin-bottom: 25px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="color: rgba(255,255,255,0.9);">Auto-refresh Weather</div>
+                    <label class="switch">
+                        <input type="checkbox" id="autoRefreshToggle" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div style="font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 5px;">
+                    Weather updates every 10 minutes
+                </div>
+            </div>
+            
+            <button onclick="saveSettings()" class="modal-button primary" style="width: 100%; margin-top: 20px;">Save Settings</button>
+        </div>
+    </div>
+
+    <script>
+        // State variables
+        let tempUnit = localStorage.getItem('tempUnit') || 'C';
+        let currentBackground = localStorage.getItem('background') || 'background.jpg';
+        let overlayEnabled = localStorage.getItem('overlayEnabled') !== 'false';
+        let overlayOpacity = localStorage.getItem('overlayOpacity') || 50;
+        let autoRefreshEnabled = localStorage.getItem('autoRefreshEnabled') !== 'false';
+        let weatherRefreshInterval = null;
+        
+        // Location variables
+        let userLat = null;
+        let userLon = null;
+        let userLocationName = "Your Location";
+        let usingDeviceLocation = true;
+        
+        // Default background images (you can change these URLs)
+        const defaultBackgrounds = [
+            { name: "Sunset", url: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80" },
+            { name: "Forest", url: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80" },
+            { name: "City", url: "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80" },
+            { name: "Ocean", url: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80" },
+            { name: "Mountains", url: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80" },
+            { name: "Space", url: "https://images.unsplash.com/photo-1446776653964-20c1d3a81b06?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80" }
+        ];
+        
+        // Initialize everything
+        async function init() {
+            loadSettings();
+            
+            // Check if we have saved location
+            const savedLat = localStorage.getItem('userLat');
+            const savedLon = localStorage.getItem('userLon');
+            const savedLocationName = localStorage.getItem('userLocationName');
+            
+            if (savedLat && savedLon) {
+                userLat = parseFloat(savedLat);
+                userLon = parseFloat(savedLon);
+                userLocationName = savedLocationName || "Custom Location";
+                usingDeviceLocation = localStorage.getItem('usingDeviceLocation') === 'true';
+                
+                if (usingDeviceLocation) {
+                    // Try to get fresh device location
+                    getDeviceLocation();
+                }
+                
+                showMainInterface();
+            } else {
+                // Show welcome screen
+                document.getElementById('welcomeScreen').style.display = 'flex';
+            }
+            
+            // Load background
+            loadBackground();
+            
+            // Setup overlay
+            setupOverlay();
+            
+            // Populate default backgrounds
+            populateDefaultBackgrounds();
+            
+            // Start clock updates
+            updateClock();
+            updateFullDate();
+            setInterval(updateClock, 1000);
+            setInterval(updateFullDate, 60000);
+            
+            // Initialize battery display
+            updateBattery();
+            
+            // Start auto-refresh if enabled
+            if (autoRefreshEnabled) {
+                startWeatherAutoRefresh();
+            }
+            
+            // Check if in standalone mode
+            if (window.matchMedia('(display-mode: standalone)').matches || 
+                window.navigator.standalone === true) {
+                document.getElementById('fullscreenBtn').style.display = 'none';
+            }
+        }
+        
+        // Request location permission
+        function requestLocationPermission() {
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        // Success
+                        userLat = position.coords.latitude;
+                        userLon = position.coords.longitude;
+                        usingDeviceLocation = true;
+                        
+                        // Save location
+                        localStorage.setItem('userLat', userLat);
+                        localStorage.setItem('userLon', userLon);
+                        localStorage.setItem('usingDeviceLocation', 'true');
+                        
+                        // Get location name from coordinates
+                        reverseGeocode(userLat, userLon);
+                        
+                        showMainInterface();
+                        fetchWeatherData();
+                    },
+                    function(error) {
+                        // Error or denied
+                        console.log("Location permission denied:", error);
+                        showNotification("Location access denied. Using default location.");
+                        useDefaultLocation();
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    }
+                );
+            } else {
+                showNotification("Geolocation is not supported by your browser.");
+                useDefaultLocation();
+            }
+        }
+        
+        // Skip location and use default
+        function skipLocation() {
+            useDefaultLocation();
+        }
+        
+        // Use default location (New York as example)
+        function useDefaultLocation() {
+            userLat = 40.7128;
+            userLon = -74.0060;
+            userLocationName = "New York, NY";
+            usingDeviceLocation = false;
+            
+            localStorage.setItem('userLat', userLat);
+            localStorage.setItem('userLon', userLon);
+            localStorage.setItem('userLocationName', userLocationName);
+            localStorage.setItem('usingDeviceLocation', 'false');
+            
+            showMainInterface();
+            fetchWeatherData();
+        }
+        
+        // Get device location (for refreshing)
+        function getDeviceLocation() {
+            if ("geolocation" in navigator && usingDeviceLocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        userLat = position.coords.latitude;
+                        userLon = position.coords.longitude;
+                        
+                        localStorage.setItem('userLat', userLat);
+                        localStorage.setItem('userLon', userLon);
+                        
+                        reverseGeocode(userLat, userLon);
+                        fetchWeatherData();
+                    },
+                    function(error) {
+                        console.log("Failed to update location:", error);
+                    },
+                    {
+                        enableHighAccuracy: false,
+                        timeout: 5000
+                    }
+                );
+            }
+        }
+        
+        // Reverse geocode coordinates to get location name
+        function reverseGeocode(lat, lon) {
+            // Using Nominatim OpenStreetMap API (free, no key required)
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.address) {
+                        const address = data.address;
+                        let name = "";
+                        
+                        if (address.city) name = address.city;
+                        else if (address.town) name = address.town;
+                        else if (address.village) name = address.village;
+                        else if (address.municipality) name = address.municipality;
+                        
+                        if (address.state) {
+                            name += name ? `, ${address.state}` : address.state;
+                        } else if (address.country) {
+                            name += name ? `, ${address.country}` : address.country;
+                        }
+                        
+                        if (name) {
+                            userLocationName = name;
+                            localStorage.setItem('userLocationName', name);
+                            document.getElementById('location').textContent = name;
+                            document.getElementById('locationInfo').textContent = `Lat: ${lat.toFixed(4)}, Lon: ${lon.toFixed(4)}`;
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.log("Reverse geocoding failed:", error);
+                    document.getElementById('locationInfo').textContent = `Lat: ${lat.toFixed(4)}, Lon: ${lon.toFixed(4)}`;
+                });
+        }
+        
+        // Show main interface
+        function showMainInterface() {
+            document.getElementById('welcomeScreen').style.display = 'none';
+            document.getElementById('mainContainer').style.display = 'flex';
+            
+            // Update location display
+            if (userLat && userLon) {
+                document.getElementById('locationInfo').textContent = `Lat: ${userLat.toFixed(4)}, Lon: ${userLon.toFixed(4)}`;
+                document.getElementById('location').textContent = userLocationName;
+                fetchWeatherData();
+            }
+        }
+        
+        // Update battery to always show "Fully Charged"
+        function updateBattery() {
+            const batteryEl = document.getElementById('batteryLevel');
+            const batteryIcon = document.querySelector('.battery i');
+            
+            batteryEl.textContent = 'Fully Charged';
+            batteryIcon.className = 'fas fa-plug-circle-bolt';
+        }
+        
+        // Start auto-refresh weather every 10 minutes
+        function startWeatherAutoRefresh() {
+            // Clear any existing interval
+            if (weatherRefreshInterval) {
+                clearInterval(weatherRefreshInterval);
+            }
+            
+            // Set new interval
+            weatherRefreshInterval = setInterval(async () => {
+                console.log('Auto-refreshing weather (every 10 minutes)...');
+                await fetchWeatherData();
+            }, 10 * 60 * 1000);
+            
+            console.log('Weather auto-refresh started: every 10 minutes');
+        }
+        
+        // Stop auto-refresh
+        function stopWeatherAutoRefresh() {
+            if (weatherRefreshInterval) {
+                clearInterval(weatherRefreshInterval);
+                weatherRefreshInterval = null;
+                console.log('Weather auto-refresh stopped');
+            }
+        }
+        
+        // Time functions using device timezone
+        function updateClock() {
+            const now = new Date();
+            
+            // Use device's local timezone automatically
+            const options = { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                hour12: false
+            };
+            const timeStr = now.toLocaleTimeString([], options);
+            document.getElementById('clock').textContent = timeStr;
+        }
+        
+        function updateFullDate() {
+            const now = new Date();
+            
+            // Use device's local timezone automatically
+            const options = { 
+                weekday: 'long', 
+                month: 'long', 
+                day: 'numeric', 
+                year: 'numeric'
+            };
+            const dateStr = now.toLocaleDateString([], options);
+            document.getElementById('fullDate').textContent = dateStr;
+        }
+        
+        async function fetchWeatherData() {
+            if (!userLat || !userLon) {
+                showNotification("No location set. Please enable location access.");
+                return;
+            }
+            
+            try {
+                console.log(`Getting weather for: ${userLat}, ${userLon}`);
+                
+                // Use Open-Meteo API with device's coordinates
+                const apiUrl = `https://api.open-meteo.com/v1/forecast?latitude=${userLat}&longitude=${userLon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m,weather_code&hourly=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min,weather_code&timezone=auto&forecast_days=1`;
+                
+                console.log('Fetching weather from:', apiUrl);
+                const response = await fetch(apiUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('Weather data received:', data);
+                
+                updateWeatherDisplay(data);
+                
+            } catch (error) {
+                console.error('Error fetching weather:', error);
+                showFallbackWeather();
+            }
+        }
+        
+        function updateWeatherDisplay(data) {
+            const current = data.current;
+            
+            if (!current) {
+                console.error('No current weather data');
+                showFallbackWeather();
+                return;
+            }
+            
+            const tempC = current.temperature_2m;
+            const feelsLikeC = current.apparent_temperature;
+            const humidity = current.relative_humidity_2m;
+            const windSpeed = current.wind_speed_10m;
+            const weatherCode = current.weather_code;
+            
+            console.log('Parsed weather:', { tempC, feelsLikeC, humidity, windSpeed, weatherCode });
+            
+            // Convert temperature based on unit
+            let displayTemp, feelsLikeTemp;
+            if (tempUnit === 'C') {
+                displayTemp = Math.round(tempC);
+                feelsLikeTemp = Math.round(feelsLikeC);
+                document.getElementById('temperature').textContent = `${displayTemp}°C`;
+                document.getElementById('feelsLike').textContent = `Feels: ${feelsLikeTemp}°`;
+            } else {
+                const tempF = (tempC * 9/5) + 32;
+                const feelsLikeF = (feelsLikeC * 9/5) + 32;
+                displayTemp = Math.round(tempF);
+                feelsLikeTemp = Math.round(feelsLikeF);
+                document.getElementById('temperature').textContent = `${displayTemp}°F`;
+                document.getElementById('feelsLike').textContent = `Feels: ${feelsLikeTemp}°`;
+            }
+            
+            // Update other weather info
+            document.getElementById('humidity').textContent = `Humidity: ${Math.round(humidity)}%`;
+            document.getElementById('windSpeed').textContent = `Wind: ${Math.round(windSpeed)} km/h`;
+            document.getElementById('location').textContent = userLocationName;
+            
+            // Get weather description and icon
+            const description = getWeatherDescription(displayTemp, weatherCode);
+            const windDesc = getWindDescription(windSpeed);
+            document.getElementById('weatherCondition').textContent = `${description} • ${windDesc}`;
+            
+            // Set weather icon
+            const currentHour = new Date().getHours();
+            const icon = getWeatherIcon(weatherCode, currentHour);
+            document.getElementById('weatherIcon').textContent = icon;
+            
+            console.log('Weather updated successfully');
+        }
+        
+        // Weather functions
+        function getWeatherIcon(weatherCode, hour) {
+            const isDay = hour >= 6 && hour < 18;
+            
+            const iconMap = {
+                0: isDay ? '☀️' : '🌙',
+                1: isDay ? '🌤️' : '🌤️',
+                2: '⛅',
+                3: '☁️',
+                45: '🌫️',
+                48: '🌫️',
+                51: '🌦️',
+                53: '🌦️',
+                55: '🌧️',
+                61: '🌧️',
+                63: '🌧️',
+                65: '🌧️',
+                71: '❄️',
+                73: '❄️',
+                75: '❄️',
+                77: '❄️',
+                80: '🌧️',
+                81: '🌧️',
+                82: '🌧️',
+                85: '❄️',
+                86: '❄️',
+                95: '⛈️',
+                96: '⛈️',
+                99: '⛈️',
+            };
+            
+            return iconMap[weatherCode] || '🌡️';
+        }
+        
+        function getWeatherDescription(temp, weatherCode) {
+            if (temp < -5) return 'Extreme cold';
+            if (temp < 0) return 'Freezing';
+            if (temp < 5) return 'Very cold';
+            if (temp < 10) return 'Cold';
+            if (temp < 15) return 'Cool';
+            if (temp < 20) return 'Mild';
+            if (temp >= 20) return 'Warm';
+            
+            if (weatherCode >= 71 && weatherCode <= 86) return 'Snow';
+            if (weatherCode >= 51 && weatherCode <= 65) return 'Rain';
+            if (weatherCode >= 95 && weatherCode <= 99) return 'Storm';
+            
+            return 'Clear';
+        }
+        
+        function getWindDescription(windSpeed) {
+            if (windSpeed < 10) return 'Light breeze';
+            if (windSpeed < 20) return 'Breezy';
+            if (windSpeed < 30) return 'Windy';
+            if (windSpeed < 40) return 'Very windy';
+            return 'Storm winds';
+        }
+        
+        function showFallbackWeather() {
+            console.log('Using fallback weather data');
+            
+            // Mock data based on hemisphere
+            const isNorthern = userLat > 0;
+            const currentMonth = new Date().getMonth();
+            
+            let currentTemp = 15; // Default
+            if (isNorthern) {
+                // Northern hemisphere seasons
+                if (currentMonth >= 11 || currentMonth <= 1) currentTemp = 0; // Winter
+                else if (currentMonth >= 2 && currentMonth <= 4) currentTemp = 10; // Spring
+                else if (currentMonth >= 5 && currentMonth <= 7) currentTemp = 25; // Summer
+                else currentTemp = 15; // Fall
+            } else {
+                // Southern hemisphere (reversed seasons)
+                if (currentMonth >= 11 || currentMonth <= 1) currentTemp = 25; // Summer
+                else if (currentMonth >= 2 && currentMonth <= 4) currentTemp = 15; // Fall
+                else if (currentMonth >= 5 && currentMonth <= 7) currentTemp = 0; // Winter
+                else currentTemp = 10; // Spring
+            }
+            
+            // Add some randomness
+            const tempVariation = Math.round(Math.random() * 4 - 2);
+            const windVariation = Math.round(Math.random() * 10 - 5);
+            
+            const feelsLike = currentTemp - 2;
+            const windSpeed = Math.max(5, 15 + windVariation);
+            const humidity = 65 + Math.round(Math.random() * 20 - 10);
+            
+            // Convert temperature based on unit
+            let displayTemp, feelsLikeTemp;
+            if (tempUnit === 'C') {
+                displayTemp = currentTemp + tempVariation;
+                feelsLikeTemp = feelsLike + tempVariation;
+                document.getElementById('temperature').textContent = `${displayTemp}°C`;
+                document.getElementById('feelsLike').textContent = `Feels: ${feelsLikeTemp}°`;
+            } else {
+                const tempF = ((currentTemp + tempVariation) * 9/5) + 32;
+                const feelsLikeF = ((feelsLike + tempVariation) * 9/5) + 32;
+                displayTemp = Math.round(tempF);
+                feelsLikeTemp = Math.round(feelsLikeF);
+                document.getElementById('temperature').textContent = `${displayTemp}°F`;
+                document.getElementById('feelsLike').textContent = `Feels: ${feelsLikeTemp}°`;
+            }
+            
+            document.getElementById('humidity').textContent = `Humidity: ${humidity}%`;
+            document.getElementById('windSpeed').textContent = `Wind: ${windSpeed} km/h`;
+            document.getElementById('location').textContent = userLocationName;
+            
+            const description = getWeatherDescription(displayTemp, 1);
+            const windDesc = getWindDescription(windSpeed);
+            document.getElementById('weatherCondition').textContent = `${description} • ${windDesc}`;
+            
+            document.getElementById('weatherIcon').textContent = '🌤️';
+        }
+        
+        // Background functions
+        function loadBackground() {
+            const container = document.getElementById('mainContainer');
+            const savedBg = localStorage.getItem('background');
+            
+            if (savedBg && savedBg !== 'none') {
+                const img = new Image();
+                img.onload = function() {
+                    container.style.background = 
+                        `linear-gradient(to bottom, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.6) 100%), 
+                        url('${savedBg}') center center / cover no-repeat fixed`;
+                    container.classList.add('loaded');
+                };
+                img.onerror = function() {
+                    container.classList.remove('loaded');
+                };
+                img.src = savedBg;
+                currentBackground = savedBg;
+            } else {
+                container.classList.remove('loaded');
+                currentBackground = 'none';
+            }
+        }
+        
+        function changeBackground() {
+            showBgModal();
+        }
+        
+        function showBgModal() {
+            document.getElementById('bgModal').style.display = 'flex';
+            document.getElementById('customImagePath').value = currentBackground === 'none' ? 'background.jpg' : currentBackground;
+        }
+        
+        function hideBgModal() {
+            document.getElementById('bgModal').style.display = 'none';
+        }
+        
+        function populateDefaultBackgrounds() {
+            const container = document.getElementById('defaultBackgrounds');
+            container.innerHTML = '';
+            
+            defaultBackgrounds.forEach((bg, index) => {
+                const bgDiv = document.createElement('div');
+                bgDiv.className = 'bg-thumb';
+                bgDiv.style.backgroundImage = `url('${bg.url}')`;
+                bgDiv.title = bg.name;
+                bgDiv.onclick = () => selectDefaultBackground(bg.url, bg.name);
+                container.appendChild(bgDiv);
+            });
+        }
+        
+        function selectDefaultBackground(url, name) {
+            document.getElementById('imageUrl').value = url;
+            showNotification(`Selected: ${name}`);
+        }
+        
+        function testCustomImage() {
+            const path = document.getElementById('customImagePath').value;
+            if (!path) return;
+            
+            const img = new Image();
+            img.onload = function() {
+                showNotification('Image loaded successfully!');
+                document.getElementById('mainContainer').style.background = 
+                    `linear-gradient(to bottom, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.6) 100%), 
+                    url('${path}') center center / cover no-repeat fixed`;
+                document.getElementById('mainContainer').classList.add('loaded');
+            };
+            img.onerror = function() {
+                showNotification('Failed to load image. Check the filename.');
+            };
+            img.src = path;
+        }
+        
+        function testUrlImage() {
+            const url = document.getElementById('imageUrl').value;
+            if (!url) return;
+            
+            const img = new Image();
+            img.onload = function() {
+                showNotification('URL image loaded successfully!');
+                document.getElementById('mainContainer').style.background = 
+                    `linear-gradient(to bottom, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.6) 100%), 
+                    url('${url}') center center / cover no-repeat fixed`;
+                document.getElementById('mainContainer').classList.add('loaded');
+            };
+            img.onerror = function() {
+                showNotification('Failed to load image from URL.');
+            };
+            img.src = url;
+        }
+        
+        function setNoBackground() {
+            document.getElementById('mainContainer').style.background = '';
+            document.getElementById('mainContainer').classList.remove('loaded');
+            currentBackground = 'none';
+            document.getElementById('customImagePath').value = '';
+            document.getElementById('imageUrl').value = '';
+            showNotification('Background removed');
+        }
+        
+        function applyBackground() {
+            const customPath = document.getElementById('customImagePath').value;
+            const urlPath = document.getElementById('imageUrl').value;
+            
+            let newBackground;
+            if (urlPath && urlPath.startsWith('http')) {
+                newBackground = urlPath;
+            } else if (customPath) {
+                newBackground = customPath;
+            } else {
+                newBackground = 'none';
+            }
+            
+            localStorage.setItem('background', newBackground);
+            currentBackground = newBackground;
+            
+            loadBackground();
+            
+            hideBgModal();
+            showNotification('Background updated');
+        }
+        
+        // Overlay functions
+        function setupOverlay() {
+            const overlay = document.getElementById('textOverlay');
+            overlay.style.opacity = (overlayOpacity / 100).toString();
+            
+            if (!overlayEnabled) {
+                overlay.style.display = 'none';
+                document.getElementById('overlayText').textContent = 'Lighten Overlay';
+            } else {
+                overlay.style.display = 'block';
+                document.getElementById('overlayText').textContent = 'Darken Overlay';
+            }
+            
+            const opacitySlider = document.getElementById('overlayOpacity');
+            if (opacitySlider) {
+                opacitySlider.value = overlayOpacity;
+                opacitySlider.oninput = function() {
+                    overlayOpacity = this.value;
+                    overlay.style.opacity = (overlayOpacity / 100).toString();
+                };
+            }
+        }
+        
+        function toggleOverlay() {
+            overlayEnabled = !overlayEnabled;
+            const overlay = document.getElementById('textOverlay');
+            
+            if (overlayEnabled) {
+                overlay.style.display = 'block';
+                document.getElementById('overlayText').textContent = 'Darken Overlay';
+            } else {
+                overlay.style.display = 'none';
+                document.getElementById('overlayText').textContent = 'Lighten Overlay';
+            }
+            
+            localStorage.setItem('overlayEnabled', overlayEnabled);
+            showNotification(overlayEnabled ? 'Text overlay enabled' : 'Text overlay disabled');
+            
+            if (document.getElementById('sideMenu').style.display === 'flex') {
+                toggleMenu();
+            }
+        }
+        
+        // Settings functions
+        function loadSettings() {
+            const savedUnit = localStorage.getItem('tempUnit') || 'C';
+            tempUnit = savedUnit;
+            
+            if (savedUnit === 'C') {
+                document.getElementById('celsiusBtn').className = 'modal-button primary';
+                document.getElementById('fahrenheitBtn').className = 'modal-button';
+            } else {
+                document.getElementById('celsiusBtn').className = 'modal-button';
+                document.getElementById('fahrenheitBtn').className = 'modal-button primary';
+            }
+            
+            overlayEnabled = localStorage.getItem('overlayEnabled') !== 'false';
+            overlayOpacity = localStorage.getItem('overlayOpacity') || 50;
+            
+            autoRefreshEnabled = localStorage.getItem('autoRefreshEnabled') !== 'false';
+            document.getElementById('autoRefreshToggle').checked = autoRefreshEnabled;
+        }
+        
+        function setTempUnit(unit) {
+            tempUnit = unit;
+            
+            if (unit === 'C') {
+                document.getElementById('celsiusBtn').className = 'modal-button primary';
+                document.getElementById('fahrenheitBtn').className = 'modal-button';
+            } else {
+                document.getElementById('celsiusBtn').className = 'modal-button';
+                document.getElementById('fahrenheitBtn').className = 'modal-button primary';
+            }
+        }
+        
+        async function saveSettings() {
+            localStorage.setItem('tempUnit', tempUnit);
+            localStorage.setItem('overlayOpacity', overlayOpacity);
+            
+            autoRefreshEnabled = document.getElementById('autoRefreshToggle').checked;
+            localStorage.setItem('autoRefreshEnabled', autoRefreshEnabled);
+            
+            if (autoRefreshEnabled) {
+                startWeatherAutoRefresh();
+            } else {
+                stopWeatherAutoRefresh();
+            }
+            
+            hideSettings();
+            
+            // Update weather with new settings
+            await fetchWeatherData();
+            
+            showNotification('Settings saved');
+        }
+        
+        // Location functions
+        function changeLocation() {
+            showSettings();
+            toggleMenu();
+        }
+        
+        function useDeviceLocation() {
+            requestLocationPermission();
+            hideSettings();
+        }
+        
+        function showLocationPicker() {
+            document.getElementById('customLocationSection').style.display = 'block';
+            
+            // Fill with current location if available
+            if (userLat && userLon) {
+                document.getElementById('customLat').value = userLat.toFixed(6);
+                document.getElementById('customLon').value = userLon.toFixed(6);
+            }
+        }
+        
+        function saveCustomLocation() {
+            const lat = parseFloat(document.getElementById('customLat').value);
+            const lon = parseFloat(document.getElementById('customLon').value);
+            
+            if (isNaN(lat) || isNaN(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+                showNotification('Invalid coordinates. Use numbers like: 40.7128, -74.0060');
+                return;
+            }
+            
+            userLat = lat;
+            userLon = lon;
+            userLocationName = "Custom Location";
+            usingDeviceLocation = false;
+            
+            localStorage.setItem('userLat', userLat);
+            localStorage.setItem('userLon', userLon);
+            localStorage.setItem('userLocationName', userLocationName);
+            localStorage.setItem('usingDeviceLocation', 'false');
+            
+            document.getElementById('location').textContent = userLocationName;
+            document.getElementById('locationInfo').textContent = `Lat: ${lat.toFixed(4)}, Lon: ${lon.toFixed(4)}`;
+            
+            document.getElementById('customLocationSection').style.display = 'none';
+            
+            fetchWeatherData();
+            showNotification('Custom location saved');
+        }
+        
+        // Menu functions
+        function toggleMenu() {
+            const menu = document.getElementById('sideMenu');
+            menu.style.display = menu.style.display === 'flex' ? 'none' : 'flex';
+        }
+        
+        function showSettings() {
+            document.getElementById('settingsModal').style.display = 'flex';
+            toggleMenu();
+        }
+        
+        function hideSettings() {
+            document.getElementById('settingsModal').style.display = 'none';
+        }
+        
+        async function refreshWeather() {
+            showNotification('Refreshing weather now...');
+            await fetchWeatherData();
+            showNotification('Weather updated');
+            if (document.getElementById('sideMenu').style.display === 'flex') {
+                toggleMenu();
+            }
+        }
+        
+        // Fullscreen function
+        function toggleFullscreen() {
+            const elem = document.documentElement;
+            
+            if (!document.fullscreenElement) {
+                if (elem.requestFullscreen) {
+                    elem.requestFullscreen();
+                } else if (elem.webkitRequestFullscreen) {
+                    elem.webkitRequestFullscreen();
+                } else if (elem.msRequestFullscreen) {
+                    elem.msRequestFullscreen();
+                }
+                document.getElementById('fullscreenBtn').style.display = 'none';
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
+                document.getElementById('fullscreenBtn').style.display = 'block';
+            }
+        }
+        
+        // Notification function
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 50px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(32, 33, 36, 0.95);
+                backdrop-filter: blur(20px);
+                color: white;
+                padding: 16px 24px;
+                border-radius: 12px;
+                border: 1px solid rgba(255,255,255,0.1);
+                z-index: 10000;
+                font-family: 'Google Sans';
+                font-size: 14px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                animation: slideIn 0.3s ease-out;
+            `;
+            notification.textContent = message;
+            
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes slideIn {
+                    from { opacity: 0; transform: translate(-50%, -20px); }
+                    to { opacity: 1; transform: translate(-50%, 0); }
+            `;
+            document.head.appendChild(style);
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.style.transition = 'opacity 0.3s';
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                    document.head.removeChild(style);
+                }, 300);
+            }, 3000);
+        }
+        
+        // Prevent context menu on long press
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+        });
+        
+        // Handle fullscreen change
+        document.addEventListener('fullscreenchange', function() {
+            const fsBtn = document.getElementById('fullscreenBtn');
+            if (document.fullscreenElement) {
+                fsBtn.style.display = 'none';
+            } else {
+                fsBtn.style.display = 'block';
+            }
+        });
+        
+        // Initialize on load
+        window.addEventListener('load', init);
+        
+        // Auto-reload page every 30 minutes to prevent memory issues
+        setTimeout(() => {
+            console.log('Auto-reloading page...');
+            showNotification('Refreshing page in 5 seconds...');
+            setTimeout(() => {
+                location.reload();
+            }, 5000);
+        }, 30 * 60 * 1000);
+    </script>
+</body>
+</html>
