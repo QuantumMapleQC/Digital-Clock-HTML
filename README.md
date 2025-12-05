@@ -11,9 +11,11 @@ mainly used for my useless devices like my Samsung Galaxy Tab A (2017) SM-380 wh
 - Asks your permission for Location access of your device for weather and timezone reasons
 
 # Note that not every browser supports it
-``Current Browsers Compatible
+``Current Browsers Compatible``
 
   [x] Opera GX 
+  
   [x] Google Chrome ( Older versions may not work)
-  [ ] Firefox 
+  
+  [ ] Firefox
   
