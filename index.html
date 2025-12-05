@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Personal Weather Dashboard</title>
+    <title>Digital Clock HTML</title>
     <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@300;400;500&display=swap" rel="stylesheet">
     <style>
         /* Reset & Base */
@@ -535,7 +535,18 @@
             line-height: 1.6;
         }
         
-        .permission-btn {
+        .city-input-container {
+            margin: 20px 0;
+        }
+        
+        .city-examples {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.5);
+            margin-top: 10px;
+            text-align: center;
+        }
+        
+        .welcome-btn {
             background: #1a73e8;
             color: white;
             border: none;
@@ -547,9 +558,10 @@
             transition: background 0.2s;
             width: 100%;
             max-width: 300px;
+            margin-top: 20px;
         }
         
-        .permission-btn:hover {
+        .welcome-btn:hover {
             background: #0d63d8;
         }
         
@@ -569,6 +581,23 @@
         .skip-btn:hover {
             background: rgba(255, 255, 255, 0.1);
         }
+        
+        /* Loading Spinner */
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top: 3px solid #1a73e8;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            display: none;
+            margin: 20px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -576,20 +605,32 @@
     <!-- Welcome/Setup Screen -->
     <div id="welcomeScreen" class="welcome-screen">
         <div class="welcome-content">
-            <h1 class="welcome-title">Welcome to Weather Dashboard</h1>
+            <h1 class="welcome-title">Welcome to Digital Clock HTML</h1>
             <p class="welcome-text">
-                This dashboard shows local weather and time based on your device's location and timezone.
-                To get accurate weather information, we need your permission to access your location.
-                Your location data is used only to fetch weather and is not stored or shared.
+                Enter any city name to get accurate weather and time information.
+                No location tracking - you choose which city to display.
             </p>
-            <button class="permission-btn" onclick="requestLocationPermission()">
-                <i class="fas fa-map-marker-alt"></i> Allow Location Access
+            
+            <div class="city-input-container">
+                <input type="text" id="cityInput" class="modal-input" placeholder="Enter city name (e.g., Paris, London, New York)" style="width: 100%;">
+                <div class="city-examples">
+                    Examples: Tokyo, Sydney, Berlin, Mumbai, Rio de Janeiro
+                </div>
+            </div>
+            
+            <div class="spinner" id="citySearchSpinner"></div>
+            <div id="citySearchResults" style="display: none; margin-top: 20px; max-height: 200px; overflow-y: auto;"></div>
+            
+            <button class="welcome-btn" onclick="searchForCity()">
+                <i class="fas fa-search"></i> Search City
             </button>
-            <button class="skip-btn" onclick="skipLocation()">
-                Skip Location (Use Default)
+            
+            <button class="skip-btn" onclick="useDefaultCity()">
+                Skip (Use Default)
             </button>
+            
             <div style="margin-top: 30px; font-size: 12px; color: rgba(255, 255, 255, 0.5);">
-                <p><i class="fas fa-lock"></i> Privacy Note: Location is used only for weather API calls. No data is stored.</p>
+                <p><i class="fas fa-lock"></i> This website does not contain any source or data leak (trust me bro)</p>
             </div>
         </div>
     </div>
@@ -608,7 +649,7 @@
         <div class="top-bar">
             <div class="location-info">
                 <i class="fas fa-map-marker-alt"></i>
-                <span id="locationInfo">Getting location...</span>
+                <span id="locationInfo">Enter a city</span>
             </div>
             <div class="battery">
                 <i class="fas fa-plug-circle-bolt"></i>
@@ -640,8 +681,8 @@
             <div class="weather-icon" id="weatherIcon">⏳</div>
             <div class="weather-temp" id="temperature">--°C</div>
             <div class="weather-details">
-                <div class="weather-location" id="location">Your Location</div>
-                <div class="weather-condition" id="weatherCondition">Allow location access for weather</div>
+                <div class="weather-location" id="location">Enter a city</div>
+                <div class="weather-condition" id="weatherCondition">Enter city name for weather</div>
                 <div class="weather-extras">
                     <span id="feelsLike">Feels: --°</span>
                     <span id="humidity">Humidity: --%</span>
@@ -677,9 +718,9 @@
                 <i class="fas fa-expand"></i>
                 <span>Fullscreen</span>
             </div>
-            <div class="menu-item" onclick="changeLocation()">
-                <i class="fas fa-map-marker-alt"></i>
-                <span>Change Location</span>
+            <div class="menu-item" onclick="changeCity()">
+                <i class="fas fa-city"></i>
+                <span>Change City</span>
             </div>
         </div>
     </div>
@@ -754,26 +795,13 @@
             </div>
             
             <div style="margin-bottom: 25px;">
-                <div style="margin-bottom: 12px; color: rgba(255,255,255,0.9);">Location Source</div>
-                <div style="display: flex; flex-direction: column; gap: 10px;">
-                    <button class="modal-button" onclick="useDeviceLocation()">
-                        <i class="fas fa-mobile-alt"></i> Use Device Location
-                    </button>
-                    <button class="modal-button" onclick="showLocationPicker()">
-                        <i class="fas fa-map"></i> Choose Custom Location
-                    </button>
-                </div>
-            </div>
-            
-            <div style="margin-bottom: 25px; display: none;" id="customLocationSection">
-                <div style="margin-bottom: 12px; color: rgba(255,255,255,0.9);">Custom Location</div>
+                <div style="margin-bottom: 12px; color: rgba(255,255,255,0.9);">Current City</div>
                 <div style="display: flex; gap: 10px;">
-                    <input type="text" id="customLat" placeholder="Latitude" class="modal-input" style="flex: 1;">
-                    <input type="text" id="customLon" placeholder="Longitude" class="modal-input" style="flex: 1;">
+                    <input type="text" id="currentCityDisplay" class="modal-input" readonly style="flex: 1;">
+                    <button class="modal-button" onclick="changeCityFromSettings()">
+                        <i class="fas fa-edit"></i> Change
+                    </button>
                 </div>
-                <button class="modal-button" onclick="saveCustomLocation()" style="width: 100%; margin-top: 10px;">
-                    <i class="fas fa-save"></i> Save Custom Location
-                </button>
             </div>
             
             <div style="margin-bottom: 25px;">
@@ -802,13 +830,17 @@
         let autoRefreshEnabled = localStorage.getItem('autoRefreshEnabled') !== 'false';
         let weatherRefreshInterval = null;
         
-        // Location variables
-        let userLat = null;
-        let userLon = null;
-        let userLocationName = "Your Location";
-        let usingDeviceLocation = true;
+        // User's selected city
+        let userCity = {
+            name: '',
+            displayName: '',
+            lat: null,
+            lon: null,
+            timezone: '',
+            country: ''
+        };
         
-        // Default background images (you can change these URLs)
+        // Default background images
         const defaultBackgrounds = [
             { name: "Sunset", url: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80" },
             { name: "Forest", url: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80" },
@@ -822,25 +854,18 @@
         async function init() {
             loadSettings();
             
-            // Check if we have saved location
-            const savedLat = localStorage.getItem('userLat');
-            const savedLon = localStorage.getItem('userLon');
-            const savedLocationName = localStorage.getItem('userLocationName');
-            
-            if (savedLat && savedLon) {
-                userLat = parseFloat(savedLat);
-                userLon = parseFloat(savedLon);
-                userLocationName = savedLocationName || "Custom Location";
-                usingDeviceLocation = localStorage.getItem('usingDeviceLocation') === 'true';
-                
-                if (usingDeviceLocation) {
-                    // Try to get fresh device location
-                    getDeviceLocation();
+            // Check if we have a saved city
+            const savedCity = localStorage.getItem('userCity');
+            if (savedCity) {
+                try {
+                    userCity = JSON.parse(savedCity);
+                    showMainInterface();
+                } catch (e) {
+                    // Invalid saved data, show city selector
+                    document.getElementById('welcomeScreen').style.display = 'flex';
                 }
-                
-                showMainInterface();
             } else {
-                // Show welcome screen
+                // Show city selector
                 document.getElementById('welcomeScreen').style.display = 'flex';
             }
             
@@ -872,126 +897,130 @@
                 window.navigator.standalone === true) {
                 document.getElementById('fullscreenBtn').style.display = 'none';
             }
+            
+            // Set up enter key for city search
+            document.getElementById('cityInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    searchForCity();
+                }
+            });
         }
         
-        // Request location permission
-        function requestLocationPermission() {
-            if ("geolocation" in navigator) {
-                navigator.geolocation.getCurrentPosition(
-                    function(position) {
-                        // Success
-                        userLat = position.coords.latitude;
-                        userLon = position.coords.longitude;
-                        usingDeviceLocation = true;
-                        
-                        // Save location
-                        localStorage.setItem('userLat', userLat);
-                        localStorage.setItem('userLon', userLon);
-                        localStorage.setItem('usingDeviceLocation', 'true');
-                        
-                        // Get location name from coordinates
-                        reverseGeocode(userLat, userLon);
-                        
-                        showMainInterface();
-                        fetchWeatherData();
-                    },
-                    function(error) {
-                        // Error or denied
-                        console.log("Location permission denied:", error);
-                        showNotification("Location access denied. Using default location.");
-                        useDefaultLocation();
-                    },
-                    {
-                        enableHighAccuracy: true,
-                        timeout: 10000,
-                        maximumAge: 0
-                    }
-                );
-            } else {
-                showNotification("Geolocation is not supported by your browser.");
-                useDefaultLocation();
+        // Search for a city by name
+        async function searchForCity() {
+            const cityInput = document.getElementById('cityInput').value.trim();
+            
+            if (!cityInput) {
+                showNotification("Please enter a city name");
+                return;
+            }
+            
+            // Show loading spinner
+            const spinner = document.getElementById('citySearchSpinner');
+            const resultsDiv = document.getElementById('citySearchResults');
+            spinner.style.display = 'block';
+            resultsDiv.style.display = 'none';
+            resultsDiv.innerHTML = '';
+            
+            try {
+                // Use Open-Meteo's geocoding API (free, no API key needed)
+                const geocodeUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityInput)}&count=5&language=en&format=json`;
+                
+                const response = await fetch(geocodeUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`Geocoding API error: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                spinner.style.display = 'none';
+                
+                if (!data.results || data.results.length === 0) {
+                    resultsDiv.innerHTML = '<div style="color: rgba(255,255,255,0.7); text-align: center; padding: 20px;">No cities found. Try a different name.</div>';
+                    resultsDiv.style.display = 'block';
+                    return;
+                }
+                
+                // Display results
+                resultsDiv.innerHTML = '<h3 style="color: rgba(255,255,255,0.9); margin-bottom: 15px;">Select a city:</h3>';
+                
+                data.results.forEach((city, index) => {
+                    const cityDiv = document.createElement('div');
+                    cityDiv.style.cssText = `
+                        background: rgba(255,255,255,0.05);
+                        border: 1px solid rgba(255,255,255,0.1);
+                        border-radius: 10px;
+                        padding: 15px;
+                        margin-bottom: 10px;
+                        cursor: pointer;
+                        transition: all 0.2s;
+                    `;
+                    cityDiv.onmouseover = () => cityDiv.style.background = 'rgba(255,255,255,0.1)';
+                    cityDiv.onmouseout = () => cityDiv.style.background = 'rgba(255,255,255,0.05)';
+                    cityDiv.onclick = () => selectCityFromSearch(city);
+                    
+                    const cityName = city.name || 'Unknown';
+                    const adminDivision = city.admin1 || '';
+                    const country = city.country || '';
+                    
+                    cityDiv.innerHTML = `
+                        <div style="font-weight: 500; color: white;">${cityName}</div>
+                        <div style="font-size: 12px; color: rgba(255,255,255,0.7); margin-top: 5px;">
+                            ${adminDivision ? adminDivision + ', ' : ''}${country}
+                        </div>
+                        <div style="font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 3px;">
+                            Lat: ${city.latitude.toFixed(4)}, Lon: ${city.longitude.toFixed(4)}
+                        </div>
+                    `;
+                    
+                    resultsDiv.appendChild(cityDiv);
+                });
+                
+                resultsDiv.style.display = 'block';
+                
+            } catch (error) {
+                console.error('Error searching for city:', error);
+                spinner.style.display = 'none';
+                resultsDiv.innerHTML = '<div style="color: rgba(255,255,255,0.7); text-align: center; padding: 20px;">Error searching for city. Please try again.</div>';
+                resultsDiv.style.display = 'block';
             }
         }
         
-        // Skip location and use default
-        function skipLocation() {
-            useDefaultLocation();
-        }
-        
-        // Use default location (New York as example)
-        function useDefaultLocation() {
-            userLat = 40.7128;
-            userLon = -74.0060;
-            userLocationName = "New York, NY";
-            usingDeviceLocation = false;
+        // Select a city from search results
+        function selectCityFromSearch(cityData) {
+            userCity = {
+                name: cityData.name,
+                displayName: `${cityData.name}${cityData.admin1 ? ', ' + cityData.admin1 : ''}${cityData.country ? ', ' + cityData.country : ''}`,
+                lat: cityData.latitude,
+                lon: cityData.longitude,
+                timezone: cityData.timezone || 'auto',
+                country: cityData.country || ''
+            };
             
-            localStorage.setItem('userLat', userLat);
-            localStorage.setItem('userLon', userLon);
-            localStorage.setItem('userLocationName', userLocationName);
-            localStorage.setItem('usingDeviceLocation', 'false');
+            // Save to localStorage
+            localStorage.setItem('userCity', JSON.stringify(userCity));
+            
+            // Clear search results
+            document.getElementById('citySearchResults').style.display = 'none';
+            document.getElementById('cityInput').value = '';
             
             showMainInterface();
             fetchWeatherData();
         }
         
-        // Get device location (for refreshing)
-        function getDeviceLocation() {
-            if ("geolocation" in navigator && usingDeviceLocation) {
-                navigator.geolocation.getCurrentPosition(
-                    function(position) {
-                        userLat = position.coords.latitude;
-                        userLon = position.coords.longitude;
-                        
-                        localStorage.setItem('userLat', userLat);
-                        localStorage.setItem('userLon', userLon);
-                        
-                        reverseGeocode(userLat, userLon);
-                        fetchWeatherData();
-                    },
-                    function(error) {
-                        console.log("Failed to update location:", error);
-                    },
-                    {
-                        enableHighAccuracy: false,
-                        timeout: 5000
-                    }
-                );
-            }
-        }
-        
-        // Reverse geocode coordinates to get location name
-        function reverseGeocode(lat, lon) {
-            // Using Nominatim OpenStreetMap API (free, no key required)
-            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.address) {
-                        const address = data.address;
-                        let name = "";
-                        
-                        if (address.city) name = address.city;
-                        else if (address.town) name = address.town;
-                        else if (address.village) name = address.village;
-                        else if (address.municipality) name = address.municipality;
-                        
-                        if (address.state) {
-                            name += name ? `, ${address.state}` : address.state;
-                        } else if (address.country) {
-                            name += name ? `, ${address.country}` : address.country;
-                        }
-                        
-                        if (name) {
-                            userLocationName = name;
-                            localStorage.setItem('userLocationName', name);
-                            document.getElementById('location').textContent = name;
-                            document.getElementById('locationInfo').textContent = `Lat: ${lat.toFixed(4)}, Lon: ${lon.toFixed(4)}`;
-                        }
-                    }
-                })
-                .catch(error => {
-                    console.log("Reverse geocoding failed:", error);
-                    document.getElementById('locationInfo').textContent = `Lat: ${lat.toFixed(4)}, Lon: ${lon.toFixed(4)}`;
-                });
+        // Use default city (your city as default)
+        function useDefaultCity() {
+            userCity = {
+                name: '',
+                displayName: '',
+                timezone: '',
+                country: ''
+            };
+            
+            localStorage.setItem('userCity', JSON.stringify(userCity));
+            showMainInterface();
+            fetchWeatherData();
         }
         
         // Show main interface
@@ -999,12 +1028,28 @@
             document.getElementById('welcomeScreen').style.display = 'none';
             document.getElementById('mainContainer').style.display = 'flex';
             
-            // Update location display
-            if (userLat && userLon) {
-                document.getElementById('locationInfo').textContent = `Lat: ${userLat.toFixed(4)}, Lon: ${userLon.toFixed(4)}`;
-                document.getElementById('location').textContent = userLocationName;
+            if (userCity.name) {
+                document.getElementById('locationInfo').textContent = userCity.displayName;
+                document.getElementById('location').textContent = userCity.displayName;
+                document.getElementById('currentCityDisplay').value = userCity.displayName;
                 fetchWeatherData();
             }
+        }
+        
+        // Change city from menu
+        function changeCity() {
+            document.getElementById('welcomeScreen').style.display = 'flex';
+            document.getElementById('mainContainer').style.display = 'none';
+            document.getElementById('citySearchResults').style.display = 'none';
+            document.getElementById('cityInput').value = '';
+            document.getElementById('citySearchSpinner').style.display = 'none';
+            toggleMenu();
+        }
+        
+        // Change city from settings
+        function changeCityFromSettings() {
+            hideSettings();
+            changeCity();
         }
         
         // Update battery to always show "Fully Charged"
@@ -1041,45 +1086,76 @@
             }
         }
         
-        // Time functions using device timezone
+        // Time functions using city timezone
         function updateClock() {
             const now = new Date();
             
-            // Use device's local timezone automatically
-            const options = { 
-                hour: '2-digit', 
-                minute: '2-digit',
-                hour12: false
-            };
-            const timeStr = now.toLocaleTimeString([], options);
-            document.getElementById('clock').textContent = timeStr;
+            if (userCity.lat && userCity.lon) {
+                // Use city's timezone if available, otherwise auto-detect
+                try {
+                    const timezone = userCity.timezone || 'auto';
+                    const options = { 
+                        hour: '2-digit', 
+                        minute: '2-digit',
+                        hour12: false,
+                        timeZone: timezone !== 'auto' ? timezone : Intl.DateTimeFormat().resolvedOptions().timeZone
+                    };
+                    const timeStr = now.toLocaleTimeString('en-US', options);
+                    document.getElementById('clock').textContent = timeStr;
+                } catch (e) {
+                    // Fallback to local time if timezone is invalid
+                    const hours = now.getHours().toString().padStart(2, '0');
+                    const minutes = now.getMinutes().toString().padStart(2, '0');
+                    document.getElementById('clock').textContent = `${hours}:${minutes}`;
+                }
+            } else {
+                // Use local time if no city selected
+                const hours = now.getHours().toString().padStart(2, '0');
+                const minutes = now.getMinutes().toString().padStart(2, '0');
+                document.getElementById('clock').textContent = `${hours}:${minutes}`;
+            }
         }
         
         function updateFullDate() {
             const now = new Date();
             
-            // Use device's local timezone automatically
-            const options = { 
-                weekday: 'long', 
-                month: 'long', 
-                day: 'numeric', 
-                year: 'numeric'
-            };
-            const dateStr = now.toLocaleDateString([], options);
-            document.getElementById('fullDate').textContent = dateStr;
+            if (userCity.lat && userCity.lon) {
+                // Use city's timezone if available, otherwise auto-detect
+                try {
+                    const timezone = userCity.timezone || 'auto';
+                    const options = { 
+                        weekday: 'long', 
+                        month: 'long', 
+                        day: 'numeric', 
+                        year: 'numeric',
+                        timeZone: timezone !== 'auto' ? timezone : Intl.DateTimeFormat().resolvedOptions().timeZone
+                    };
+                    const dateStr = now.toLocaleDateString('en-US', options);
+                    document.getElementById('fullDate').textContent = dateStr;
+                } catch (e) {
+                    // Fallback to local date
+                    const options = { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' };
+                    document.getElementById('fullDate').textContent = now.toLocaleDateString('en-US', options);
+                }
+            } else {
+                // Use local date if no city selected
+                const options = { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' };
+                document.getElementById('fullDate').textContent = now.toLocaleDateString('en-US', options);
+            }
         }
         
         async function fetchWeatherData() {
-            if (!userLat || !userLon) {
-                showNotification("No location set. Please enable location access.");
+            if (!userCity.lat || !userCity.lon) {
+                showNotification("No city selected. Please enter a city name.");
                 return;
             }
             
             try {
-                console.log(`Getting weather for: ${userLat}, ${userLon}`);
+                console.log(`Getting weather for: ${userCity.displayName}`);
                 
-                // Use Open-Meteo API with device's coordinates
-                const apiUrl = `https://api.open-meteo.com/v1/forecast?latitude=${userLat}&longitude=${userLon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m,weather_code&hourly=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min,weather_code&timezone=auto&forecast_days=1`;
+                // Use Open-Meteo API with city coordinates
+                const timezone = userCity.timezone || 'auto';
+                const apiUrl = `https://api.open-meteo.com/v1/forecast?latitude=${userCity.lat}&longitude=${userCity.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m,weather_code&hourly=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min,weather_code&timezone=${timezone}&forecast_days=1`;
                 
                 console.log('Fetching weather from:', apiUrl);
                 const response = await fetch(apiUrl);
@@ -1135,7 +1211,7 @@
             // Update other weather info
             document.getElementById('humidity').textContent = `Humidity: ${Math.round(humidity)}%`;
             document.getElementById('windSpeed').textContent = `Wind: ${Math.round(windSpeed)} km/h`;
-            document.getElementById('location').textContent = userLocationName;
+            document.getElementById('location').textContent = userCity.displayName;
             
             // Get weather description and icon
             const description = getWeatherDescription(displayTemp, weatherCode);
@@ -1211,22 +1287,24 @@
         function showFallbackWeather() {
             console.log('Using fallback weather data');
             
-            // Mock data based on hemisphere
-            const isNorthern = userLat > 0;
+            if (!userCity.lat) return;
+            
+            // Mock data based on latitude and month
             const currentMonth = new Date().getMonth();
+            const isNorthern = userCity.lat > 0;
             
             let currentTemp = 15; // Default
             if (isNorthern) {
                 // Northern hemisphere seasons
-                if (currentMonth >= 11 || currentMonth <= 1) currentTemp = 0; // Winter
-                else if (currentMonth >= 2 && currentMonth <= 4) currentTemp = 10; // Spring
-                else if (currentMonth >= 5 && currentMonth <= 7) currentTemp = 25; // Summer
-                else currentTemp = 15; // Fall
+                if (currentMonth >= 11 || currentMonth <= 1) currentTemp = -5; // Winter
+                else if (currentMonth >= 2 && currentMonth <= 4) currentTemp = 8; // Spring
+                else if (currentMonth >= 5 && currentMonth <= 7) currentTemp = 22; // Summer
+                else currentTemp = 12; // Fall
             } else {
                 // Southern hemisphere (reversed seasons)
                 if (currentMonth >= 11 || currentMonth <= 1) currentTemp = 25; // Summer
                 else if (currentMonth >= 2 && currentMonth <= 4) currentTemp = 15; // Fall
-                else if (currentMonth >= 5 && currentMonth <= 7) currentTemp = 0; // Winter
+                else if (currentMonth >= 5 && currentMonth <= 7) currentTemp = 5; // Winter
                 else currentTemp = 10; // Spring
             }
             
@@ -1256,7 +1334,7 @@
             
             document.getElementById('humidity').textContent = `Humidity: ${humidity}%`;
             document.getElementById('windSpeed').textContent = `Wind: ${windSpeed} km/h`;
-            document.getElementById('location').textContent = userLocationName;
+            document.getElementById('location').textContent = userCity.displayName;
             
             const description = getWeatherDescription(displayTemp, 1);
             const windDesc = getWindDescription(windSpeed);
@@ -1449,6 +1527,11 @@
             
             autoRefreshEnabled = localStorage.getItem('autoRefreshEnabled') !== 'false';
             document.getElementById('autoRefreshToggle').checked = autoRefreshEnabled;
+            
+            // Update current city display
+            if (userCity.displayName) {
+                document.getElementById('currentCityDisplay').value = userCity.displayName;
+            }
         }
         
         function setTempUnit(unit) {
@@ -1482,55 +1565,6 @@
             await fetchWeatherData();
             
             showNotification('Settings saved');
-        }
-        
-        // Location functions
-        function changeLocation() {
-            showSettings();
-            toggleMenu();
-        }
-        
-        function useDeviceLocation() {
-            requestLocationPermission();
-            hideSettings();
-        }
-        
-        function showLocationPicker() {
-            document.getElementById('customLocationSection').style.display = 'block';
-            
-            // Fill with current location if available
-            if (userLat && userLon) {
-                document.getElementById('customLat').value = userLat.toFixed(6);
-                document.getElementById('customLon').value = userLon.toFixed(6);
-            }
-        }
-        
-        function saveCustomLocation() {
-            const lat = parseFloat(document.getElementById('customLat').value);
-            const lon = parseFloat(document.getElementById('customLon').value);
-            
-            if (isNaN(lat) || isNaN(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
-                showNotification('Invalid coordinates. Use numbers like: 40.7128, -74.0060');
-                return;
-            }
-            
-            userLat = lat;
-            userLon = lon;
-            userLocationName = "Custom Location";
-            usingDeviceLocation = false;
-            
-            localStorage.setItem('userLat', userLat);
-            localStorage.setItem('userLon', userLon);
-            localStorage.setItem('userLocationName', userLocationName);
-            localStorage.setItem('usingDeviceLocation', 'false');
-            
-            document.getElementById('location').textContent = userLocationName;
-            document.getElementById('locationInfo').textContent = `Lat: ${lat.toFixed(4)}, Lon: ${lon.toFixed(4)}`;
-            
-            document.getElementById('customLocationSection').style.display = 'none';
-            
-            fetchWeatherData();
-            showNotification('Custom location saved');
         }
         
         // Menu functions
